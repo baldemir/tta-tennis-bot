@@ -1,0 +1,14 @@
+{
+  "name": "tta-tennis-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "run": "tsx src/bot.ts",
+    "dry-run": "DRY_RUN=true tsx src/bot.ts",
+    "schedule": "tsx src/scheduler.ts",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {"dotenv": "^16.4.5", "node-cron": "^3.0.3"},
+  "devDependencies": {"@types/node": "^22.10.0", "@types/node-cron": "^3.0.11", "tsx": "^4.19.2", "typescript": "^5.7.2"}
+}
