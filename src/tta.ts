@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { config } from './config.js';
 import { getAccessToken } from './auth.js';
 
@@ -100,6 +103,28 @@ export async function createReservation(court: Court, slot: Slot): Promise<void>
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(12000),
   });
+  await saveReservationResponse(slot, payload, response);
   // Do not print the response body: it may contain personal information.
   if (response.status !== 200) throw new Error(`Reservation not confirmed: HTTP ${response.status}. Check account before retrying.`);
+}
+
+/**
+ * Saves the raw booking response (status, headers, body) plus the request payload to
+ * state/responses/, so success detection can later be based on the real response shape.
+ * The body may contain personal data: the file is git-ignored and mode 600. Never throws.
+ */
+async function saveReservationResponse(slot: Slot, payload: object, response: Response): Promise<void> {
+  try {
+    const text = await response.text();
+    let body: unknown = text;
+    try { body = JSON.parse(text); } catch { /* keep raw text */ }
+    const headers = Object.fromEntries([...response.headers].filter(([name]) => name !== 'set-cookie'));
+    const dir = join('state', 'responses');
+    await mkdir(dir, { recursive: true });
+    const file = join(dir, `${slot.date}-${slot.startTime.replace(':', '')}-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.json`);
+    await writeFile(file, JSON.stringify({ recordedAt: new Date().toISOString(), request: payload, status: response.status, headers, body }, null, 2), { mode: 0o600 });
+    console.log(`Booking response saved to ${file}`);
+  } catch (error) {
+    console.error('Could not save booking response:', error instanceof Error ? error.message : String(error));
+  }
 }
